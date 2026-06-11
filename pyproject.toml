@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tej"
+name = "tejhq"
 dynamic = ["version"]
 description = "Python SDK for tej-api: open EOD market data for NSE and BSE."
 readme = "README.md"

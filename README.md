@@ -1,7 +1,7 @@
 # tej
 
-[![PyPI](https://img.shields.io/pypi/v/tej.svg)](https://pypi.org/project/tej/)
-[![Python](https://img.shields.io/pypi/pyversions/tej.svg)](https://pypi.org/project/tej/)
+[![PyPI](https://img.shields.io/pypi/v/tejhq.svg)](https://pypi.org/project/tejhq/)
+[![Python](https://img.shields.io/pypi/pyversions/tejhq.svg)](https://pypi.org/project/tejhq/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Python SDK for [tej-api](https://api.tejhq.dev): open, free, end-of-day market data for NSE and BSE. No signup, no keys, no catch.
@@ -11,10 +11,10 @@ Python SDK for [tej-api](https://api.tejhq.dev): open, free, end-of-day market d
 ## Install
 
 ```bash
-pip install tej
+pip install tejhq
 ```
 
-That is the entire install. No `httpx`, no `aiohttp`, no `pydantic`. Just stdlib.
+That is the entire install. No `httpx`, no `aiohttp`, no `pydantic`. Just stdlib. Distribution is `tejhq`; import as `tej`.
 
 ## Quick start (sync)
 
@@ -88,8 +88,8 @@ df["close"].plot()
 Optional extras install the dataframe library alongside the SDK:
 
 ```bash
-pip install "tej[polars]"
-pip install "tej[pandas]"
+pip install "tejhq[polars]"
+pip install "tejhq[pandas]"
 ```
 
 ## API reference (free tier)

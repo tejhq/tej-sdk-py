@@ -2,7 +2,7 @@ name: release
 
 # Publishes to PyPI on a tag of the shape v*.*.*. Uses PyPI Trusted Publishers
 # (OIDC) so no API token is stored in the repo. Configure once at:
-# https://pypi.org/manage/project/tej/settings/publishing/
+# https://pypi.org/manage/project/tejhq/settings/publishing/
 #   owner: tejhq
 #   repo: tej-sdk-py
 #   workflow: release.yml
