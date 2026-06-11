@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tej"
+dynamic = ["version"]
+description = "Python SDK for tej-api: open EOD market data for NSE and BSE."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "TejHQ", email = "support@tejhq.dev" }]
+keywords = ["nse", "bse", "bhavcopy", "ohlcv", "market-data", "india", "stocks"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Financial and Insurance Industry",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Office/Business :: Financial :: Investment",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+polars = ["polars>=1.0"]
+pandas = ["pandas>=2.0"]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "ruff>=0.6",
+  "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://tejhq.dev"
+Documentation = "https://tejhq.dev/docs"
+Repository = "https://github.com/tejhq/tej-sdk-py"
+Issues = "https://github.com/tejhq/tej-sdk-py/issues"
+Changelog = "https://github.com/tejhq/tej-sdk-py/blob/master/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/tej/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tej"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/tej", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+files = ["src/tej"]
