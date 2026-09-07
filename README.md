@@ -92,24 +92,66 @@ pip install "tejhq[polars]"
 pip install "tejhq[pandas]"
 ```
 
-## API reference (free tier)
+## Free key endpoints
 
-| Method | Endpoint | Returns |
-| --- | --- | --- |
-| `c.ohlcv(symbol, exchange, from_=None, to=None)` | `GET /v1/ohlcv/{exchange}/{symbol}` | `list[OHLCV]` |
-| `c.snapshot(exchange, date)` | `GET /v1/snapshot/{exchange}?date=` | `list[SnapshotRow]` |
-| `c.actions(symbol)` | `GET /v1/actions/{symbol}` | `list[Action]` |
-| `c.health()` | `GET /health` | `dict` |
-| `c.ready()` | `GET /ready` | `dict` |
+Get a key at [tejhq.dev/keys](https://tejhq.dev/keys), no card, no password.
+
+```python
+from tej import Client
+
+c = Client(api_key="tej_live_...")
+
+# Back-adjusted prices, continuous through splits, bonuses and dividends
+adj = c.adjusted("RELIANCE", "nse", "2024-10-01", "2024-11-30")
+print(adj[-1]["adj_close"], adj[-1]["adj_factor_cumulative"])
+
+# Symbol history by ISIN or symbol
+c.symbols("nse", isin="INE040A01034")
+c.symbols("nse", symbol="HDFCBANK")
+
+# Account, keys, today's usage
+c.me()
+```
+
+## Pro endpoints
+
+```python
+c = Client(api_key="tej_live_...")   # a key on the Pro tier
+
+# Derived metrics per day: returns, 52w high/low, average volume and turnover
+m = c.metrics("RELIANCE", "nse", "2026-01-01")
+
+# Point-in-time liquidity universe, survivorship-bias-free
+members = c.universe("liquid500", "nse", as_of="2019-03-15")
+symbols = [x["symbol"] for x in members]
+
+# Up to 50 symbols in one request, dict keyed by symbol
+bars = c.batch(["RELIANCE", "TCS", "INFY"], "nse", "2026-01-01")
+
+# Free text to symbol
+c.resolve("tata motors", exchange="nse", limit=3)
+c.resolve("zomato")   # former ticker resolves to the current one
+```
+
+## API reference
+
+| Method | Endpoint | Tier | Returns |
+| --- | --- | --- | --- |
+| `c.ohlcv(symbol, exchange, from_=None, to=None)` | `GET /v1/ohlcv/{exchange}/{symbol}` | keyless | `list[OHLCV]` |
+| `c.snapshot(exchange, date)` | `GET /v1/snapshot/{exchange}?date=` | keyless | `list[SnapshotRow]` |
+| `c.actions(symbol)` | `GET /v1/actions/{symbol}` | keyless | `list[Action]` |
+| `c.adjusted(symbol, exchange, from_=None, to=None)` | `GET /v1/adjusted/{exchange}/{symbol}` | free key | `list[AdjustedRow]` |
+| `c.symbols(exchange, symbol=None, isin=None)` | `GET /v1/symbols/{exchange}` | free key | `list[SymbolInterval]` |
+| `c.me()` | `GET /v1/me` | free key | `dict` |
+| `c.metrics(symbol, exchange, from_=None, to=None)` | `GET /v1/metrics/{exchange}/{symbol}` | pro | `list[MetricsRow]` |
+| `c.universe(name, exchange="nse", as_of=None)` | `GET /v1/universe/{name}` | pro | `list[UniverseMember]` |
+| `c.batch(symbols, exchange="nse", from_=None, to=None)` | `GET /v1/batch` | pro | `dict[str, list[OHLCV]]` |
+| `c.resolve(q, exchange="both", limit=5)` | `GET /v1/resolve` | pro | `list[ResolveHit]` |
+| `c.health()`, `c.ready()` | `GET /health`, `GET /ready` | keyless | `dict` |
 
 Need the response envelope (with `meta`)? Use `c.ohlcv_envelope(...)`, which returns the raw `{"data": [...], "meta": {...}}` dict.
 
-`AsyncClient` exposes the same surface with `await`:
-
-```python
-async with AsyncClient() as c:
-    rows = await c.ohlcv("RELIANCE", "nse")
-```
+`AsyncClient` exposes the same surface with `await`.
 
 ## Configuration
 
@@ -126,34 +168,6 @@ c = Client(
 )
 ```
 
-## Free key endpoints
-
-A free key from [tejhq.dev/keys](https://tejhq.dev/keys) unlocks back-adjusted prices and symbol history, 1,000 requests a day. `Client(api_key=...)` sends it as `Authorization: Bearer` on every call.
-
-`adjusted()` and `symbols()` helpers are not in this SDK release yet. Until they land, call the two endpoints directly with the standard library, or with any HTTP client:
-
-```python
-import json
-from urllib.request import Request, urlopen
-
-KEY = "tej_live_..."
-
-def get(path: str) -> dict:
-    req = Request(f"https://api.tejhq.dev{path}", headers={"Authorization": f"Bearer {KEY}"})
-    with urlopen(req, timeout=30) as resp:
-        return json.load(resp)
-
-# Split and dividend adjusted close, same from/to semantics as ohlcv
-adj = get("/v1/adjusted/nse/RELIANCE?from=2024-01-01&to=2024-12-31")
-print(adj["data"][-1]["adj_close"])
-
-# Symbol history by ISIN or symbol
-hist = get("/v1/symbols/nse?isin=INE040A01034")
-print(hist["data"])
-```
-
-Without a key these paths answer `401 key_required`. With a free key on a Pro path such as `/v1/universe` they answer `402 pro_required`.
-
 ## Errors
 
 All errors inherit from `tej.TejError`. The specific subclass tells you what happened:
@@ -161,6 +175,7 @@ All errors inherit from `tej.TejError`. The specific subclass tells you what hap
 | Exception | When |
 | --- | --- |
 | `BadRequestError` | HTTP 400, bad path or query parameter (also raised locally on invalid args before the request goes out, as a plain `ValueError`) |
+| `AuthError` | HTTP 401, `key_required` when no key was sent to a gated endpoint, `invalid_key` when the key is malformed, unknown, or revoked |
 | `NotFoundError` | HTTP 404 |
 | `ProRequiredError` | HTTP 402, the key's tier is too low for this endpoint (`/v1/universe`, `/v1/metrics` need Pro) |
 | `TejError` with `error_code == "key_required"` | HTTP 401, the endpoint needs a key and none was sent (`/v1/adjusted`, `/v1/symbols`) |

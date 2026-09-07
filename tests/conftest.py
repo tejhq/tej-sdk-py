@@ -10,20 +10,21 @@ from __future__ import annotations
 import json
 import socket
 import threading
+from collections.abc import Generator
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any, Callable, Dict, Generator, List, Tuple
+from typing import Any, Callable
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-Response = Tuple[int, Dict[str, Any]]
-Handler = Callable[[str, Dict[str, List[str]]], Response]
+Response = tuple[int, dict[str, Any]]
+Handler = Callable[[str, dict[str, list[str]]], Response]
 
 
 class _Server:
     def __init__(self) -> None:
-        self.requests: List[Tuple[str, str, Dict[str, List[str]]]] = []
-        self.handlers: Dict[str, Handler] = {}
+        self.requests: list[tuple[str, str, dict[str, list[str]]]] = []
+        self.handlers: dict[str, Handler] = {}
         self.default_handler: Handler = lambda p, q: (404, {"error": "not_found"})
         self._httpd: HTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -86,7 +87,7 @@ def server() -> Generator[_Server, None, None]:
 
 
 @pytest.fixture
-def ohlcv_response() -> Dict[str, Any]:
+def ohlcv_response() -> dict[str, Any]:
     return {
         "data": [
             {
@@ -107,7 +108,7 @@ def ohlcv_response() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def snapshot_response() -> Dict[str, Any]:
+def snapshot_response() -> dict[str, Any]:
     return {
         "data": [
             {
@@ -131,7 +132,7 @@ def snapshot_response() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def actions_response() -> Dict[str, Any]:
+def actions_response() -> dict[str, Any]:
     return {
         "data": [
             {

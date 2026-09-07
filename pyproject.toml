@@ -66,6 +66,7 @@ target-version = "py39"
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 
 [tool.mypy]
-python_version = "3.9"
+# mypy dropped 3.9 target support; runtime 3.9 compat is covered by the CI matrix
+python_version = "3.10"
 strict = true
 files = ["src/tej"]

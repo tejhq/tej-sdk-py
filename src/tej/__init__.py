@@ -26,6 +26,7 @@ from ._version import __version__
 from .async_client import AsyncClient
 from .client import Client
 from .exceptions import (
+    AuthError,
     BadRequestError,
     NetworkError,
     NotFoundError,
@@ -34,22 +35,39 @@ from .exceptions import (
     ServerError,
     TejError,
 )
-from .models import Action, Envelope, Exchange, OHLCV, SnapshotRow
+from .models import (
+    OHLCV,
+    Action,
+    AdjustedRow,
+    Envelope,
+    Exchange,
+    MetricsRow,
+    ResolveHit,
+    SnapshotRow,
+    SymbolInterval,
+    UniverseMember,
+)
 
 __all__ = [
     "__version__",
     "Action",
+    "AdjustedRow",
     "AsyncClient",
+    "AuthError",
     "BadRequestError",
     "Client",
     "Envelope",
     "Exchange",
+    "MetricsRow",
     "NetworkError",
     "NotFoundError",
     "OHLCV",
     "ProRequiredError",
     "RateLimitError",
+    "ResolveHit",
     "ServerError",
     "SnapshotRow",
+    "SymbolInterval",
     "TejError",
+    "UniverseMember",
 ]

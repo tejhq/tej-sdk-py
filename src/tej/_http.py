@@ -14,7 +14,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Callable, Mapping, Optional, Tuple
+from collections.abc import Mapping
+from typing import Any, Callable
 
 from ._version import __version__
 from .exceptions import NetworkError, ServerError, TejError, from_status
@@ -62,7 +63,7 @@ def validate_date(value: str, field: str) -> str:
     return value
 
 
-def build_url(base_url: str, path: str, query: Optional[Mapping[str, Any]] = None) -> str:
+def build_url(base_url: str, path: str, query: Mapping[str, Any] | None = None) -> str:
     url = base_url.rstrip("/") + "/" + path.lstrip("/")
     if query:
         items = [(k, str(v)) for k, v in query.items() if v is not None]
@@ -74,10 +75,10 @@ def build_url(base_url: str, path: str, query: Optional[Mapping[str, Any]] = Non
 def _backoff_sleep(attempt: int, base: float, cap: float) -> float:
     expo = min(cap, base * (2 ** attempt))
     jitter = random.uniform(0, expo / 2)
-    return expo / 2 + jitter
+    return float(expo / 2 + jitter)
 
 
-def _parse_body(raw: bytes, status: int, request_id: Optional[str]) -> Any:
+def _parse_body(raw: bytes, status: int, request_id: str | None) -> Any:
     if not raw:
         return None
     try:
@@ -92,10 +93,10 @@ def _parse_body(raw: bytes, status: int, request_id: Optional[str]) -> Any:
         return None
 
 
-def _raise_for_status(status: int, body: Any, request_id: Optional[str]) -> None:
+def _raise_for_status(status: int, body: Any, request_id: str | None) -> None:
     if 200 <= status < 300:
         return
-    error_code: Optional[str] = None
+    error_code: str | None = None
     message = f"HTTP {status}"
     if isinstance(body, dict):
         error_code = body.get("error") if isinstance(body.get("error"), str) else None
@@ -111,13 +112,13 @@ def request_json(
     method: str,
     url: str,
     *,
-    headers: Optional[Mapping[str, str]] = None,
+    headers: Mapping[str, str] | None = None,
     timeout: float = DEFAULT_TIMEOUT,
     max_retries: int = DEFAULT_MAX_RETRIES,
     backoff_base: float = DEFAULT_BACKOFF_BASE,
     backoff_cap: float = DEFAULT_BACKOFF_CAP,
     sleep: Callable[[float], None] = time.sleep,
-) -> Tuple[int, Any, Mapping[str, str]]:
+) -> tuple[int, Any, Mapping[str, str]]:
     """One HTTP round-trip with retry/backoff.
 
     Returns ``(status, parsed_json_or_none, response_headers)``. Raises
@@ -128,7 +129,7 @@ def request_json(
     if headers:
         merged_headers.update(headers)
 
-    last_exc: Optional[BaseException] = None
+    last_exc: BaseException | None = None
     for attempt in range(max_retries + 1):
         req = urllib.request.Request(url, method=method, headers=dict(merged_headers))
         try:

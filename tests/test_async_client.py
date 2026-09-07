@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from tej import AsyncClient, NotFoundError, ServerError
+from tej import AsyncClient, NotFoundError
 
 
 async def test_ohlcv_async(server, ohlcv_response):

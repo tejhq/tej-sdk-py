@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -11,7 +11,6 @@ from tej import (
     ProRequiredError,
     RateLimitError,
     ServerError,
-    TejError,
 )
 
 
@@ -98,7 +97,7 @@ def test_status_to_exception_mapping(server, status, err_cls):
 
 
 def test_retry_then_success(server, ohlcv_response):
-    state: Dict[str, int] = {"calls": 0}
+    state: dict[str, int] = {"calls": 0}
 
     def flaky(_p: str, _q: Any) -> Any:
         state["calls"] += 1
@@ -143,7 +142,6 @@ def test_invalid_date_raises_value_error(server):
 
 
 def test_api_key_sets_authorization_header(server, ohlcv_response):
-    captured: List[str] = []
 
     class CapturingHandler:
         def __call__(self, p: str, q: Any) -> Any:
