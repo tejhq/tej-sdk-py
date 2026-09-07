@@ -134,7 +134,7 @@ All errors inherit from `tej.TejError`. The specific subclass tells you what hap
 | --- | --- |
 | `BadRequestError` | HTTP 400, bad path or query parameter (also raised locally on invalid args before the request goes out, as a plain `ValueError`) |
 | `NotFoundError` | HTTP 404 |
-| `ProRequiredError` | HTTP 402, endpoint is part of the Pro tier |
+| `ProRequiredError` | HTTP 402, endpoint is part of the Pro tier (`/v1/adjusted`, `/v1/symbols`, `/v1/metrics`, `/v1/universe`) |
 | `RateLimitError` | HTTP 429 |
 | `ServerError` | HTTP 5xx |
 | `NetworkError` | DNS, connection, TLS, or timeout failure |
@@ -160,7 +160,7 @@ except ProRequiredError as e:
 - **BSE bhavcopy + corp actions**: 2024-07-08 to today (the SEBI CMTS cutover), ~470 days, ~1M rows
 - **Cron refresh**: weekdays 20:00 IST
 
-Past dates are cached `immutable` at the Cloudflare edge. Expect first-request 1 to 3s, repeat-request sub-100ms.
+Free-tier endpoints are served at the Cloudflare edge from pre-rendered JSON, so most requests return in well under a second and repeat requests are cache hits. Keyless access is rate limited to 100 requests per 10 seconds per IP at the edge and 120 per minute at origin; the SDK retries 429s with backoff. A free API key with higher limits is coming; pass it as `api_key=` when it does.
 
 ## License
 
