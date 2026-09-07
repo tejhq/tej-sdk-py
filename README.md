@@ -118,13 +118,41 @@ from tej import Client
 
 c = Client(
     base_url="https://api.tejhq.dev",   # override for self-hosted or staging
-    api_key=None,                        # not needed for free tier
+    api_key=None,                        # tej_live_... from https://tejhq.dev/keys; keyless works for ohlcv, snapshot, actions
     timeout=30.0,                        # seconds
     max_retries=3,                       # exponential backoff on 5xx/429/network
     user_agent_suffix="my-app/1.0",      # for attribution
     default_headers={"X-My-Header": "hi"},
 )
 ```
+
+## Free key endpoints
+
+A free key from [tejhq.dev/keys](https://tejhq.dev/keys) unlocks back-adjusted prices and symbol history, 1,000 requests a day. `Client(api_key=...)` sends it as `Authorization: Bearer` on every call.
+
+`adjusted()` and `symbols()` helpers are not in this SDK release yet. Until they land, call the two endpoints directly with the standard library, or with any HTTP client:
+
+```python
+import json
+from urllib.request import Request, urlopen
+
+KEY = "tej_live_..."
+
+def get(path: str) -> dict:
+    req = Request(f"https://api.tejhq.dev{path}", headers={"Authorization": f"Bearer {KEY}"})
+    with urlopen(req, timeout=30) as resp:
+        return json.load(resp)
+
+# Split and dividend adjusted close, same from/to semantics as ohlcv
+adj = get("/v1/adjusted/nse/RELIANCE?from=2024-01-01&to=2024-12-31")
+print(adj["data"][-1]["adj_close"])
+
+# Symbol history by ISIN or symbol
+hist = get("/v1/symbols/nse?isin=INE040A01034")
+print(hist["data"])
+```
+
+Without a key these paths answer `401 key_required`. With a free key on a Pro path such as `/v1/universe` they answer `402 pro_required`.
 
 ## Errors
 
@@ -134,7 +162,9 @@ All errors inherit from `tej.TejError`. The specific subclass tells you what hap
 | --- | --- |
 | `BadRequestError` | HTTP 400, bad path or query parameter (also raised locally on invalid args before the request goes out, as a plain `ValueError`) |
 | `NotFoundError` | HTTP 404 |
-| `ProRequiredError` | HTTP 402, endpoint is part of the Pro tier (`/v1/adjusted`, `/v1/symbols`, `/v1/metrics`, `/v1/universe`) |
+| `ProRequiredError` | HTTP 402, the key's tier is too low for this endpoint (`/v1/universe`, `/v1/metrics` need Pro) |
+| `TejError` with `error_code == "key_required"` | HTTP 401, the endpoint needs a key and none was sent (`/v1/adjusted`, `/v1/symbols`) |
+| `TejError` with `error_code == "invalid_key"` | HTTP 401, the key is malformed, unknown, or revoked |
 | `RateLimitError` | HTTP 429 |
 | `ServerError` | HTTP 5xx |
 | `NetworkError` | DNS, connection, TLS, or timeout failure |
@@ -160,7 +190,7 @@ except ProRequiredError as e:
 - **BSE bhavcopy + corp actions**: 2024-07-08 to today (the SEBI CMTS cutover), ~470 days, ~1M rows
 - **Cron refresh**: weekdays 20:00 IST
 
-Free-tier endpoints are served at the Cloudflare edge from pre-rendered JSON, so most requests return in well under a second and repeat requests are cache hits. Keyless access is rate limited to 100 requests per 10 seconds per IP at the edge and 120 per minute at origin; the SDK retries 429s with backoff. A free API key with higher limits is coming; pass it as `api_key=` when it does.
+Keyless endpoints are served at the Cloudflare edge from pre-rendered JSON, so most requests return in well under a second and repeat requests are cache hits. Keyless access is rate limited to 100 requests per 10 seconds per IP at the edge and 120 per minute at origin; the SDK retries 429s with backoff. Keyed requests bypass the edge cache and carry `X-RateLimit-Limit-Day` and `X-RateLimit-Remaining-Day` headers: 1,000 a day and 300 a minute on a free key.
 
 ## License
 
