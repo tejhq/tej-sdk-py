@@ -102,6 +102,12 @@ class MetricsRow(TypedDict):
     avg_turnover_20d: float | None
 
 
+class ScreenerRow(MetricsRow):
+    """One instrument on one day with its metrics, from ``/v1/screener``."""
+
+    symbol: str
+
+
 class UniverseMember(TypedDict):
     rank: int
     symbol: str

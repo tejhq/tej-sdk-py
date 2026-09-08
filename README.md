@@ -131,6 +131,17 @@ bars = c.batch(["RELIANCE", "TCS", "INFY"], "nse", "2026-01-01")
 # Free text to symbol
 c.resolve("tata motors", exchange="nse", limit=3)
 c.resolve("zomato")   # former ticker resolves to the current one
+
+# Screen the market: liquid names up more than 5% this month, within 5% of the 52w high
+hits = c.screener(
+    "nse",
+    universe="liquid500",
+    filters={"ret_21d.gt": 0.05, "pct_off_52w_high.gte": -0.05, "avg_turnover_20d.gte": 5e7},
+    sort="ret_21d",
+    limit=20,
+)
+env = c.screener_envelope(date="2019-03-15", universe="liquid100")
+env["meta"]["date"], env["meta"]["total"]   # day actually used, matches before paging
 ```
 
 ## API reference
@@ -147,6 +158,8 @@ c.resolve("zomato")   # former ticker resolves to the current one
 | `c.universe(name, exchange="nse", as_of=None)` | `GET /v1/universe/{name}` | pro | `list[UniverseMember]` |
 | `c.batch(symbols, exchange="nse", from_=None, to=None)` | `GET /v1/batch` | pro | `dict[str, list[OHLCV]]` |
 | `c.resolve(q, exchange="both", limit=5)` | `GET /v1/resolve` | pro | `list[ResolveHit]` |
+| `c.screener(exchange="nse", date=None, universe=None, filters=None, sort=None, order=None, limit=50, offset=0)` | `GET /v1/screener` | pro | `list[ScreenerRow]` |
+| `c.screener_envelope(...)` | same, with `meta["total"]` and `meta["date"]` | pro | `Envelope` |
 | `c.health()`, `c.ready()` | `GET /health`, `GET /ready` | keyless | `dict` |
 
 Need the response envelope (with `meta`)? Use `c.ohlcv_envelope(...)`, which returns the raw `{"data": [...], "meta": {...}}` dict.
@@ -215,5 +228,6 @@ MIT. Use it, fork it, ship products on top of it.
 
 - API docs: [tejhq.dev/docs](https://tejhq.dev/docs)
 - OpenAPI spec: [api.tejhq.dev/openapi.yaml](https://api.tejhq.dev/openapi.yaml)
+- TypeScript SDK, same surface: [npmjs.com/package/tejhq](https://www.npmjs.com/package/tejhq)
 - Bulk parquet downloads: [data.tejhq.dev](https://data.tejhq.dev) and [huggingface.co/datasets/tejhq/indian-markets](https://huggingface.co/datasets/tejhq/indian-markets)
 - Issues: [github.com/tejhq/tej-sdk-py/issues](https://github.com/tejhq/tej-sdk-py/issues)

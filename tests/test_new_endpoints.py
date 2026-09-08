@@ -176,3 +176,64 @@ def test_async_parity(server, adjusted_response):
 
     a, r, b = asyncio.run(main())
     assert a[0]["adj_close"] == 0.5 and r[0]["symbol"] == "RELIANCE" and b == {"TCS": []}
+
+
+def test_screener_query_and_validation(server):
+    server.route(
+        "/v1/screener",
+        lambda p, q: (
+            200,
+            {
+                "data": [{"symbol": "TBZ", "date": "2026-09-07", "ret_21d": 0.95}],
+                "meta": {"date": "2026-09-07", "total": 64, "count": 1},
+            },
+        ),
+    )
+    c = Client(base_url=server.base_url, api_key="tej_live_" + "a" * 32, max_retries=0)
+    rows = c.screener(
+        "NSE",
+        universe="liquid500",
+        filters={"ret_21d.gt": 0.05, "pct_off_52w_high.gte": -0.05, "avg_turnover_20d.gte": 5e7},
+        sort="ret_21d",
+        limit=5,
+    )
+    assert rows[0]["symbol"] == "TBZ"
+    assert server.requests[-1][2] == {
+        "exchange": ["nse"],
+        "universe": ["liquid500"],
+        "ret_21d.gt": ["0.05"],
+        "pct_off_52w_high.gte": ["-0.05"],
+        "avg_turnover_20d.gte": ["50000000.0"],
+        "sort": ["ret_21d"],
+        "limit": ["5"],
+        "offset": ["0"],
+    }
+    env = c.screener_envelope(date="2026-09-08")
+    assert env["meta"]["total"] == 64
+    assert server.requests[-1][2]["date"] == ["2026-09-08"]
+
+    for bad in (
+        dict(filters={"foo.gt": 1}),
+        dict(filters={"ret_1d.like": 1}),
+        dict(filters={"ret_1d.gt": "x"}),
+        dict(filters={f"ret_{n}d.gt": 0 for n in range(11)}),
+        dict(universe="nifty50"),
+        dict(sort="name"),
+        dict(order="up"),
+        dict(limit=0),
+        dict(limit=501),
+        dict(offset=-1),
+        dict(date="2026/09/08"),
+    ):
+        with pytest.raises(ValueError):
+            c.screener(**bad)
+
+
+def test_screener_async(server):
+    server.route("/v1/screener", lambda p, q: (200, {"data": [{"symbol": "X"}], "meta": {}}))
+
+    async def main():
+        async with AsyncClient(base_url=server.base_url, max_retries=0) as c:
+            return await c.screener(filters={"ret_1d.gt": 0.1}, limit=1)
+
+    assert asyncio.run(main())[0]["symbol"] == "X"

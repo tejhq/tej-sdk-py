@@ -21,6 +21,7 @@ from .models import (
     Envelope,
     MetricsRow,
     ResolveHit,
+    ScreenerRow,
     SnapshotRow,
     SymbolInterval,
     UniverseMember,
@@ -145,7 +146,6 @@ class Client:
         sym = _http.normalize_symbol(symbol)
         body = self._get(f"/v1/actions/{sym}")
         return _http.envelope_data(body)  # type: ignore[return-value]
-
 
     # ---- free key tier -------------------------------------------------
 
@@ -279,6 +279,71 @@ class Client:
         body = self._get("/v1/resolve", {"q": q, "exchange": ex, "limit": str(limit)})
         return _http.envelope_data(body)  # type: ignore[return-value]
 
+    def screener(
+        self,
+        exchange: str = "nse",
+        *,
+        date: str | None = None,
+        universe: str | None = None,
+        filters: Mapping[str, float] | None = None,
+        sort: str | None = None,
+        order: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ScreenerRow]:
+        """Screen the whole market on one trading day. Needs a Pro key.
+
+        ``filters`` maps ``"<column>.<op>"`` to a number, e.g.
+        ``{"ret_21d.gt": 0.05, "pct_off_52w_high.gte": -0.05}``, with op
+        in ``gt``, ``gte``, ``lt``, ``lte``. At most ten, all ANDed. ``date``
+        snaps back to the latest trading day on or before it. ``universe``
+        (``liquid100``, ``liquid250``, ``liquid500``) restricts to the
+        point-in-time membership on that day. Use :meth:`screener_envelope`
+        for ``meta.total`` and the date actually used.
+        """
+        body = self._get(
+            "/v1/screener",
+            _screener_query(
+                exchange,
+                date,
+                universe,
+                filters,
+                sort,
+                order,
+                limit,
+                offset,
+            ),
+        )
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    def screener_envelope(
+        self,
+        exchange: str = "nse",
+        *,
+        date: str | None = None,
+        universe: str | None = None,
+        filters: Mapping[str, float] | None = None,
+        sort: str | None = None,
+        order: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Envelope:
+        """:meth:`screener` with the ``meta`` block: ``date`` used, ``total`` matches."""
+        body = self._get(
+            "/v1/screener",
+            _screener_query(
+                exchange,
+                date,
+                universe,
+                filters,
+                sort,
+                order,
+                limit,
+                offset,
+            ),
+        )
+        return cast(Envelope, body) if isinstance(body, dict) else Envelope(data=[])
+
     # ---- envelope variants (with meta) ---------------------------------
 
     def ohlcv_envelope(
@@ -306,3 +371,76 @@ def _range_query(from_: str | None, to: str | None) -> dict[str, str] | None:
     if to is not None:
         query["to"] = _http.validate_date(to, "to")
     return query or None
+
+
+SCREENER_COLUMNS = frozenset(
+    {
+        "adj_close",
+        "ret_1d",
+        "ret_5d",
+        "ret_21d",
+        "ret_63d",
+        "ret_126d",
+        "ret_252d",
+        "ret_ytd",
+        "high_52w",
+        "low_52w",
+        "pct_off_52w_high",
+        "pct_off_52w_low",
+        "avg_vol_20d",
+        "avg_vol_60d",
+        "avg_turnover_20d",
+    }
+)
+SCREENER_OPS = frozenset({"gt", "gte", "lt", "lte"})
+SCREENER_UNIVERSES = frozenset({"liquid100", "liquid250", "liquid500"})
+
+
+def _screener_query(
+    exchange: str,
+    date: str | None,
+    universe: str | None,
+    filters: Mapping[str, float] | None,
+    sort: str | None,
+    order: str | None,
+    limit: int,
+    offset: int,
+) -> dict[str, str]:
+    query: dict[str, str] = {"exchange": _http.normalize_exchange(exchange)}
+    if date is not None:
+        query["date"] = _http.validate_date(date, "date")
+    if universe is not None:
+        u = universe.strip().lower()
+        if u not in SCREENER_UNIVERSES:
+            raise ValueError("universe must be liquid100, liquid250 or liquid500")
+        query["universe"] = u
+    if filters:
+        if len(filters) > 10:
+            raise ValueError("at most 10 filters per screen")
+        for key, value in filters.items():
+            col, _, op = key.partition(".")
+            col, op = col.strip().lower(), op.strip().lower()
+            if col not in SCREENER_COLUMNS or op not in SCREENER_OPS:
+                raise ValueError(
+                    f"filter {key!r} must be '<column>.<op>' with op in gt, gte, lt, lte"
+                )
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"filter {key!r} value must be a number")
+            query[f"{col}.{op}"] = repr(float(value))
+    if sort is not None:
+        st = sort.strip().lower()
+        if st != "symbol" and st not in SCREENER_COLUMNS:
+            raise ValueError("sort must be 'symbol' or a metrics column")
+        query["sort"] = st
+    if order is not None:
+        o = order.strip().lower()
+        if o not in ("asc", "desc"):
+            raise ValueError("order must be 'asc' or 'desc'")
+        query["order"] = o
+    if not 1 <= limit <= 500:
+        raise ValueError("limit must be 1 to 500")
+    if offset < 0:
+        raise ValueError("offset must be 0 or more")
+    query["limit"] = str(limit)
+    query["offset"] = str(offset)
+    return query

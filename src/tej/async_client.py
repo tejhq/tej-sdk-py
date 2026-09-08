@@ -27,6 +27,7 @@ from types import TracebackType
 from typing import Any, cast
 
 from . import _http
+from .client import _screener_query
 from .models import (
     OHLCV,
     Action,
@@ -34,6 +35,7 @@ from .models import (
     Envelope,
     MetricsRow,
     ResolveHit,
+    ScreenerRow,
     SnapshotRow,
     SymbolInterval,
     UniverseMember,
@@ -265,6 +267,65 @@ class AsyncClient:
         ex = "both" if exchange.lower() == "both" else _http.normalize_exchange(exchange)
         body = await self._get("/v1/resolve", {"q": q, "exchange": ex, "limit": str(limit)})
         return _http.envelope_data(body)  # type: ignore[return-value]
+
+    async def screener(
+        self,
+        exchange: str = "nse",
+        *,
+        date: str | None = None,
+        universe: str | None = None,
+        filters: Mapping[str, float] | None = None,
+        sort: str | None = None,
+        order: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ScreenerRow]:
+        """Screen the whole market on one trading day. Needs a Pro key.
+
+        See :meth:`tej.Client.screener` for the argument semantics.
+        """
+        body = await self._get(
+            "/v1/screener",
+            _screener_query(
+                exchange,
+                date,
+                universe,
+                filters,
+                sort,
+                order,
+                limit,
+                offset,
+            ),
+        )
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    async def screener_envelope(
+        self,
+        exchange: str = "nse",
+        *,
+        date: str | None = None,
+        universe: str | None = None,
+        filters: Mapping[str, float] | None = None,
+        sort: str | None = None,
+        order: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Envelope:
+        """:meth:`screener` with the ``meta`` block: ``date`` used, ``total`` matches."""
+        body = await self._get(
+            "/v1/screener",
+            _screener_query(
+                exchange,
+                date,
+                universe,
+                filters,
+                sort,
+                order,
+                limit,
+                offset,
+            ),
+        )
+        return cast(Envelope, body) if isinstance(body, dict) else Envelope(data=[])
 
     async def ohlcv_envelope(
         self,
