@@ -190,9 +190,7 @@ All errors inherit from `tej.TejError`. The specific subclass tells you what hap
 | `BadRequestError` | HTTP 400, bad path or query parameter (also raised locally on invalid args before the request goes out, as a plain `ValueError`) |
 | `AuthError` | HTTP 401, `key_required` when no key was sent to a gated endpoint, `invalid_key` when the key is malformed, unknown, or revoked |
 | `NotFoundError` | HTTP 404 |
-| `ProRequiredError` | HTTP 402, the key's tier is too low for this endpoint (`/v1/universe`, `/v1/metrics` need Pro) |
-| `TejError` with `error_code == "key_required"` | HTTP 401, the endpoint needs a key and none was sent (`/v1/adjusted`, `/v1/symbols`) |
-| `TejError` with `error_code == "invalid_key"` | HTTP 401, the key is malformed, unknown, or revoked |
+| `ProRequiredError` | HTTP 402, the key's tier is too low for this endpoint (`/v1/metrics`, `/v1/universe`, `/v1/batch`, `/v1/resolve`, `/v1/screener` need Pro) |
 | `RateLimitError` | HTTP 429 |
 | `ServerError` | HTTP 5xx |
 | `NetworkError` | DNS, connection, TLS, or timeout failure |
@@ -214,8 +212,8 @@ except ProRequiredError as e:
 
 ## Coverage
 
-- **NSE bhavcopy + corp actions**: 2010-01-04 to today, ~4,047 trading days, ~7M rows
-- **BSE bhavcopy + corp actions**: 2024-07-08 to today (the SEBI CMTS cutover), ~470 days, ~1M rows
+- **NSE bhavcopy + corp actions**: 2010-01-04 to today, ~4,100 trading days, ~7M rows
+- **BSE bhavcopy + corp actions**: 2024-07-08 to today (the SEBI CMTS cutover), ~530 days, ~1.2M rows
 - **Cron refresh**: weekdays 20:00 IST
 
 Keyless endpoints are served at the Cloudflare edge from pre-rendered JSON, so most requests return in well under a second and repeat requests are cache hits. Keyless access is rate limited to 100 requests per 10 seconds per IP at the edge and 120 per minute at origin; the SDK retries 429s with backoff. Keyed requests bypass the edge cache and carry `X-RateLimit-Limit-Day` and `X-RateLimit-Remaining-Day` headers: 1,000 a day and 300 a minute on a free key.
@@ -228,6 +226,6 @@ MIT. Use it, fork it, ship products on top of it.
 
 - API docs: [tejhq.dev/docs](https://tejhq.dev/docs)
 - OpenAPI spec: [api.tejhq.dev/openapi.yaml](https://api.tejhq.dev/openapi.yaml)
-- TypeScript SDK, same surface: [npmjs.com/package/tejhq](https://www.npmjs.com/package/tejhq)
+- TypeScript SDK, same surface: [github.com/tejhq/tej-sdk-ts](https://github.com/tejhq/tej-sdk-ts) (npm publish pending)
 - Bulk parquet downloads: [data.tejhq.dev](https://data.tejhq.dev) and [huggingface.co/datasets/tejhq/indian-markets](https://huggingface.co/datasets/tejhq/indian-markets)
 - Issues: [github.com/tejhq/tej-sdk-py/issues](https://github.com/tejhq/tej-sdk-py/issues)
