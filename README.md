@@ -190,7 +190,7 @@ All errors inherit from `tej.TejError`. The specific subclass tells you what hap
 | `BadRequestError` | HTTP 400, bad path or query parameter (also raised locally on invalid args before the request goes out, as a plain `ValueError`) |
 | `AuthError` | HTTP 401, `key_required` when no key was sent to a gated endpoint, `invalid_key` when the key is malformed, unknown, or revoked |
 | `NotFoundError` | HTTP 404 |
-| `ProRequiredError` | HTTP 402, the key's tier is too low for this endpoint (`/v1/metrics`, `/v1/universe`, `/v1/batch`, `/v1/resolve`, `/v1/screener` need Pro) |
+| `ProRequiredError` | HTTP 402, the key's tier is too low for this endpoint (`/v1/metrics`, `/v1/universe`, `/v1/batch`, `/v1/resolve`, `/v1/screener` need Retail or Pro) |
 | `RateLimitError` | HTTP 429 |
 | `ServerError` | HTTP 5xx |
 | `NetworkError` | DNS, connection, TLS, or timeout failure |

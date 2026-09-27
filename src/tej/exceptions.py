@@ -43,7 +43,7 @@ class AuthError(TejError):
 
 
 class ProRequiredError(TejError):
-    """402: endpoint is part of the Pro tier."""
+    """402: endpoint needs a paid key, Retail or Pro."""
 
 
 class RateLimitError(TejError):
