@@ -105,6 +105,10 @@ c = Client(api_key="tej_live_...")
 adj = c.adjusted("RELIANCE", "nse", "2024-10-01", "2024-11-30")
 print(adj[-1]["adj_close"], adj[-1]["adj_factor_cumulative"])
 
+# Delivery quantity and % (NSE, since 2010)
+d = c.delivery("RELIANCE", "nse", "2026-10-01", "2026-10-30")
+print(d[-1]["delivery_pct"])
+
 # Symbol history by ISIN or symbol
 c.symbols("nse", isin="INE040A01034")
 c.symbols("nse", symbol="HDFCBANK")
@@ -152,6 +156,7 @@ env["meta"]["date"], env["meta"]["total"]   # day actually used, matches before 
 | `c.snapshot(exchange, date)` | `GET /v1/snapshot/{exchange}?date=` | keyless | `list[SnapshotRow]` |
 | `c.actions(symbol)` | `GET /v1/actions/{symbol}` | keyless | `list[Action]` |
 | `c.adjusted(symbol, exchange, from_=None, to=None)` | `GET /v1/adjusted/{exchange}/{symbol}` | free key | `list[AdjustedRow]` |
+| `c.delivery(symbol, exchange="nse", from_=None, to=None)` | `GET /v1/delivery/{exchange}/{symbol}` | free key | `list[DeliveryRow]` |
 | `c.symbols(exchange, symbol=None, isin=None)` | `GET /v1/symbols/{exchange}` | free key | `list[SymbolInterval]` |
 | `c.me()` | `GET /v1/me` | free key | `dict` |
 | `c.metrics(symbol, exchange, from_=None, to=None)` | `GET /v1/metrics/{exchange}/{symbol}` | pro | `list[MetricsRow]` |

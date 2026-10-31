@@ -74,6 +74,13 @@ class AdjustedRow(TypedDict):
     adj_close: float
 
 
+class DeliveryRow(TypedDict):
+    date: str
+    volume: int
+    delivery_qty: int
+    delivery_pct: float
+
+
 class SymbolInterval(TypedDict):
     isin: str
     symbol: str

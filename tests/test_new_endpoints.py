@@ -37,6 +37,24 @@ def test_adjusted_sends_key_and_range(server, adjusted_response):
     assert server.requests[-1][2] == {"from": ["2025-01-01"], "to": ["2025-01-31"]}
 
 
+def test_delivery_sends_key_and_range(server):
+    body = {
+        "data": [{"date": "2026-10-30", "volume": 100, "delivery_qty": 55, "delivery_pct": 55.0}],
+        "meta": {"count": 1},
+    }
+    server.route("/v1/delivery/nse/RELIANCE", lambda p, q: (200, body))
+    c = Client(base_url=server.base_url, api_key="tej_live_" + "a" * 32, max_retries=0)
+    rows = c.delivery("reliance", from_="2026-10-01", to="2026-10-30")
+    assert rows[0]["delivery_pct"] == 55.0
+    assert server.requests[-1][2] == {"from": ["2026-10-01"], "to": ["2026-10-30"]}
+
+    async def main():
+        async with AsyncClient(base_url=server.base_url, max_retries=0) as ac:
+            return await ac.delivery("RELIANCE")
+
+    assert asyncio.run(main())[0]["delivery_qty"] == 55
+
+
 def test_keyless_gated_endpoint_raises_auth_error(server):
     server.route(
         "/v1/adjusted/nse/TCS",

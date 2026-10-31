@@ -18,6 +18,7 @@ from .models import (
     OHLCV,
     Action,
     AdjustedRow,
+    DeliveryRow,
     Envelope,
     MetricsRow,
     ResolveHit,
@@ -164,6 +165,23 @@ class Client:
         ex = _http.normalize_exchange(exchange)
         sym = _http.normalize_symbol(symbol)
         body = self._get(f"/v1/adjusted/{ex}/{sym}", _range_query(from_, to))
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    def delivery(
+        self,
+        symbol: str,
+        exchange: str = "nse",
+        from_: str | None = None,
+        to: str | None = None,
+    ) -> list[DeliveryRow]:
+        """Delivery quantity and % for one symbol, NSE only. Needs a free API key.
+
+        Same range semantics as :meth:`ohlcv`. ``delivery_pct`` is deliverable
+        quantity over traded volume, EQ series, from 2010-01-04.
+        """
+        ex = _http.normalize_exchange(exchange)
+        sym = _http.normalize_symbol(symbol)
+        body = self._get(f"/v1/delivery/{ex}/{sym}", _range_query(from_, to))
         return _http.envelope_data(body)  # type: ignore[return-value]
 
     def symbols(

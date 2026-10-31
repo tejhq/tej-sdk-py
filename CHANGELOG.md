@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- `delivery()` on both clients: NSE delivery quantity and % per day since 2010. Free key.
+- `DeliveryRow` model.
+
 ## 0.3.0
 
 - `screener()` and `screener_envelope()` on both clients: cross-sectional filters on the metrics tree, point-in-time universe restriction, sort and paging. Pro tier.
