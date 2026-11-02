@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- F&O (NSE futures and options, end of day, since 2010), Retail and Pro: `fo_chain()`, `fo_chain_envelope()`, `fo_expiries()`, `fo_futures()`, `fo_contract()` on both clients.
+- `FORow` and `FOExpiry` models.
+
 ## 0.4.0
 
 - `delivery()` on both clients: NSE delivery quantity and % per day since 2010. Free key.

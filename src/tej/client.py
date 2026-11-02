@@ -20,6 +20,8 @@ from .models import (
     AdjustedRow,
     DeliveryRow,
     Envelope,
+    FOExpiry,
+    FORow,
     MetricsRow,
     ResolveHit,
     ScreenerRow,
@@ -362,6 +364,75 @@ class Client:
         )
         return cast(Envelope, body) if isinstance(body, dict) else Envelope(data=[])
 
+    # ---- F&O (Retail and Pro) ----------------------------------------
+
+    def fo_chain(
+        self,
+        symbol: str,
+        date: str | None = None,
+        expiry: str | None = None,
+    ) -> list[FORow]:
+        """NSE option chain for one expiry on one day. Needs a Retail or Pro key.
+
+        Defaults to the latest F&O day on or before ``date`` and the nearest
+        option expiry. Use :meth:`fo_chain_envelope` for the resolved date,
+        expiry and underlying.
+        """
+        env = self.fo_chain_envelope(symbol, date, expiry)
+        return env.get("data", [])  # type: ignore[return-value]
+
+    def fo_chain_envelope(
+        self,
+        symbol: str,
+        date: str | None = None,
+        expiry: str | None = None,
+    ) -> Envelope:
+        """:meth:`fo_chain` with ``meta``: ``date``, ``expiry``, ``underlying``."""
+        sym = _http.normalize_symbol(symbol)
+        body = self._get(f"/v1/fo/chain/{sym}", _fo_day_query(date, expiry))
+        return cast(Envelope, body) if isinstance(body, dict) else Envelope(data=[])
+
+    def fo_expiries(self, symbol: str, date: str | None = None) -> list[FOExpiry]:
+        """Expiries traded for ``symbol`` on a day, per instrument. Retail or Pro."""
+        sym = _http.normalize_symbol(symbol)
+        body = self._get(f"/v1/fo/expiries/{sym}", _fo_day_query(date, None))
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    def fo_futures(
+        self,
+        symbol: str,
+        from_: str | None = None,
+        to: str | None = None,
+    ) -> list[FORow]:
+        """Every futures expiry of ``symbol`` per day. Retail or Pro.
+
+        Same range semantics as :meth:`ohlcv`.
+        """
+        sym = _http.normalize_symbol(symbol)
+        body = self._get(f"/v1/fo/futures/{sym}", _range_query(from_, to))
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    def fo_contract(
+        self,
+        symbol: str,
+        expiry: str,
+        strike: float | None = None,
+        option_type: str | None = None,
+        from_: str | None = None,
+        to: str | None = None,
+    ) -> list[FORow]:
+        """One contract's daily history. Retail or Pro.
+
+        With ``strike`` and ``option_type`` (CE or PE) it is that option;
+        without both, the future for ``expiry``. ``to`` defaults to the
+        expiry and ``from_`` to six months before ``to``.
+        """
+        sym = _http.normalize_symbol(symbol)
+        body = self._get(
+            f"/v1/fo/contract/{sym}", _fo_contract_query(expiry, strike, option_type, from_, to)
+        )
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
     # ---- envelope variants (with meta) ---------------------------------
 
     def ohlcv_envelope(
@@ -412,6 +483,37 @@ SCREENER_COLUMNS = frozenset(
 )
 SCREENER_OPS = frozenset({"gt", "gte", "lt", "lte"})
 SCREENER_UNIVERSES = frozenset({"liquid100", "liquid250", "liquid500"})
+
+
+def _fo_day_query(date: str | None, expiry: str | None) -> dict[str, str] | None:
+    q: dict[str, str] = {}
+    if date is not None:
+        q["date"] = _http.validate_date(date, "date")
+    if expiry is not None:
+        q["expiry"] = _http.validate_date(expiry, "expiry")
+    return q or None
+
+
+def _fo_contract_query(
+    expiry: str,
+    strike: float | None,
+    option_type: str | None,
+    from_: str | None,
+    to: str | None,
+) -> dict[str, str]:
+    q: dict[str, str] = {"expiry": _http.validate_date(expiry, "expiry")}
+    if (strike is None) != (option_type is None):
+        raise ValueError("pass strike and option_type together, or neither for the future")
+    if strike is not None and option_type is not None:
+        if strike <= 0:
+            raise ValueError("strike must be positive")
+        ot = option_type.strip().upper()
+        if ot not in ("CE", "PE", "CA", "PA"):
+            raise ValueError("option_type must be CE or PE (CA, PA before 2011)")
+        q["strike"] = f"{strike:g}"
+        q["option_type"] = ot
+    q.update(_range_query(from_, to) or {})
+    return q
 
 
 def _screener_query(

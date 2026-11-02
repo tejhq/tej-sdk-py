@@ -81,6 +81,36 @@ class DeliveryRow(TypedDict):
     delivery_pct: float
 
 
+class FORow(TypedDict):
+    """One F&O contract on one day. ``strike``/``option_type`` are None for
+    futures; ``underlying``/``lot_size`` are None before 2024-07-08."""
+
+    date: str
+    instrument: str
+    expiry: str
+    strike: float | None
+    option_type: str | None
+    open: float
+    high: float
+    low: float
+    close: float
+    settle_price: float
+    contracts: int
+    turnover: float
+    open_interest: int
+    oi_change: int
+    underlying: float | None
+    lot_size: int | None
+
+
+class FOExpiry(TypedDict):
+    expiry: str
+    instrument: str
+    contracts: int
+    open_interest: int
+    strikes: int
+
+
 class SymbolInterval(TypedDict):
     isin: str
     symbol: str
