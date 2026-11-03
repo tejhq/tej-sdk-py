@@ -255,3 +255,82 @@ def test_screener_async(server):
             return await c.screener(filters={"ret_1d.gt": 0.1}, limit=1)
 
     assert asyncio.run(main())[0]["symbol"] == "X"
+
+
+def _fo_row(**kw):
+    row = {
+        "date": "2026-10-30",
+        "instrument": "OPTIDX",
+        "expiry": "2026-11-03",
+        "strike": 23000.0,
+        "option_type": "CE",
+        "open": 1,
+        "high": 1,
+        "low": 1,
+        "close": 1,
+        "settle_price": 1,
+        "contracts": 10,
+        "turnover": 1.0,
+        "open_interest": 100,
+        "oi_change": 5,
+        "underlying": 23053.1,
+        "lot_size": 65,
+    }
+    row.update(kw)
+    return row
+
+
+def test_fo_chain_and_envelope(server):
+    meta = {"date": "2026-10-30", "expiry": "2026-11-03", "underlying": 23053.1}
+    body = {"data": [_fo_row()], "meta": meta}
+    server.route("/v1/fo/chain/NIFTY", lambda p, q: (200, body))
+    c = Client(base_url=server.base_url, api_key="tej_live_" + "a" * 32, max_retries=0)
+    assert c.fo_chain("nifty")[0]["strike"] == 23000.0
+    assert server.requests[-1][2] == {}
+    env = c.fo_chain_envelope("NIFTY", date="2026-10-30", expiry="2026-11-03")
+    assert env["meta"]["underlying"] == 23053.1
+    assert server.requests[-1][2] == {"date": ["2026-10-30"], "expiry": ["2026-11-03"]}
+
+
+def test_fo_expiries_futures_contract(server):
+    fut = _fo_row(instrument="FUTIDX", strike=None, option_type=None)
+    expiries = {"data": [{"expiry": "2026-11-03"}], "meta": {}}
+    server.route("/v1/fo/expiries/NIFTY", lambda p, q: (200, expiries))
+    server.route("/v1/fo/futures/NIFTY", lambda p, q: (200, {"data": [fut], "meta": {}}))
+    server.route("/v1/fo/contract/NIFTY", lambda p, q: (200, {"data": [_fo_row()], "meta": {}}))
+    c = Client(base_url=server.base_url, max_retries=0)
+    assert c.fo_expiries("NIFTY", "2026-10-30")[0]["expiry"] == "2026-11-03"
+    assert c.fo_futures("NIFTY", "2026-10-01")[0]["strike"] is None
+    c.fo_contract("NIFTY", "2026-11-24", 23000, "ce", from_="2026-10-01")
+    assert server.requests[-1][2] == {
+        "expiry": ["2026-11-24"],
+        "strike": ["23000"],
+        "option_type": ["CE"],
+        "from": ["2026-10-01"],
+    }
+    c.fo_contract("NIFTY", "2026-11-24")
+    assert server.requests[-1][2] == {"expiry": ["2026-11-24"]}
+
+
+def test_fo_contract_validation():
+    c = Client(max_retries=0)
+    with pytest.raises(ValueError, match="together"):
+        c.fo_contract("NIFTY", "2026-11-24", strike=23000)
+    with pytest.raises(ValueError, match="option_type"):
+        c.fo_contract("NIFTY", "2026-11-24", 23000, "XX")
+    with pytest.raises(ValueError, match="positive"):
+        c.fo_contract("NIFTY", "2026-11-24", -1, "CE")
+
+
+def test_fo_async(server):
+    server.route("/v1/fo/chain/NIFTY", lambda p, q: (200, {"data": [_fo_row()], "meta": {}}))
+    server.route("/v1/fo/contract/NIFTY", lambda p, q: (200, {"data": [_fo_row()], "meta": {}}))
+
+    async def main():
+        async with AsyncClient(base_url=server.base_url, max_retries=0) as c:
+            return await asyncio.gather(
+                c.fo_chain("NIFTY"), c.fo_contract("NIFTY", "2026-11-24", 23000, "PE")
+            )
+
+    chain, contract = asyncio.run(main())
+    assert chain[0]["lot_size"] == 65 and contract[0]["option_type"] == "CE"

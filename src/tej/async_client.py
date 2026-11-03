@@ -27,13 +27,15 @@ from types import TracebackType
 from typing import Any, cast
 
 from . import _http
-from .client import _screener_query
+from .client import _fo_contract_query, _fo_day_query, _screener_query
 from .models import (
     OHLCV,
     Action,
     AdjustedRow,
     DeliveryRow,
     Envelope,
+    FOExpiry,
+    FORow,
     MetricsRow,
     ResolveHit,
     ScreenerRow,
@@ -344,6 +346,75 @@ class AsyncClient:
             ),
         )
         return cast(Envelope, body) if isinstance(body, dict) else Envelope(data=[])
+
+    # ---- F&O (Retail and Pro) ----------------------------------------
+
+    async def fo_chain(
+        self,
+        symbol: str,
+        date: str | None = None,
+        expiry: str | None = None,
+    ) -> list[FORow]:
+        """NSE option chain for one expiry on one day. Needs a Retail or Pro key.
+
+        Defaults to the latest F&O day on or before ``date`` and the nearest
+        option expiry. Use :meth:`fo_chain_envelope` for the resolved date,
+        expiry and underlying.
+        """
+        env = await self.fo_chain_envelope(symbol, date, expiry)
+        return env.get("data", [])  # type: ignore[return-value]
+
+    async def fo_chain_envelope(
+        self,
+        symbol: str,
+        date: str | None = None,
+        expiry: str | None = None,
+    ) -> Envelope:
+        """:meth:`fo_chain` with ``meta``: ``date``, ``expiry``, ``underlying``."""
+        sym = _http.normalize_symbol(symbol)
+        body = await self._get(f"/v1/fo/chain/{sym}", _fo_day_query(date, expiry))
+        return cast(Envelope, body) if isinstance(body, dict) else Envelope(data=[])
+
+    async def fo_expiries(self, symbol: str, date: str | None = None) -> list[FOExpiry]:
+        """Expiries traded for ``symbol`` on a day, per instrument. Retail or Pro."""
+        sym = _http.normalize_symbol(symbol)
+        body = await self._get(f"/v1/fo/expiries/{sym}", _fo_day_query(date, None))
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    async def fo_futures(
+        self,
+        symbol: str,
+        from_: str | None = None,
+        to: str | None = None,
+    ) -> list[FORow]:
+        """Every futures expiry of ``symbol`` per day. Retail or Pro.
+
+        Same range semantics as :meth:`ohlcv`.
+        """
+        sym = _http.normalize_symbol(symbol)
+        body = await self._get(f"/v1/fo/futures/{sym}", _range_query(from_, to))
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    async def fo_contract(
+        self,
+        symbol: str,
+        expiry: str,
+        strike: float | None = None,
+        option_type: str | None = None,
+        from_: str | None = None,
+        to: str | None = None,
+    ) -> list[FORow]:
+        """One contract's daily history. Retail or Pro.
+
+        With ``strike`` and ``option_type`` (CE or PE) it is that option;
+        without both, the future for ``expiry``. ``to`` defaults to the
+        expiry and ``from_`` to six months before ``to``.
+        """
+        sym = _http.normalize_symbol(symbol)
+        body = await self._get(
+            f"/v1/fo/contract/{sym}", _fo_contract_query(expiry, strike, option_type, from_, to)
+        )
+        return _http.envelope_data(body)  # type: ignore[return-value]
 
     async def ohlcv_envelope(
         self,

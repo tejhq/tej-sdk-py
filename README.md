@@ -148,6 +148,28 @@ env = c.screener_envelope(date="2019-03-15", universe="liquid100")
 env["meta"]["date"], env["meta"]["total"]   # day actually used, matches before paging
 ```
 
+## F&O (Retail and Pro)
+
+NSE futures and options, end of day, one row per contract per day since 2010.
+
+```python
+c = Client(api_key="tej_live_...")   # Retail or Pro
+
+# Option chain: latest day and nearest expiry by default
+env = c.fo_chain_envelope("NIFTY")
+env["meta"]["date"], env["meta"]["expiry"], env["meta"]["underlying"]
+chain = env["data"]   # strike, option_type, close, settle_price, open_interest, oi_change, ...
+
+# Any past day and expiry
+c.fo_chain("BANKNIFTY", date="2020-03-23", expiry="2020-03-26")
+
+# Expiries traded on a day, futures history, one contract's history
+c.fo_expiries("NIFTY", "2026-10-30")
+c.fo_futures("RELIANCE", "2026-01-01")
+c.fo_contract("NIFTY", "2026-11-24", strike=23000, option_type="CE", from_="2026-10-01")
+c.fo_contract("NIFTY", "2026-11-24")   # without strike: the future
+```
+
 ## API reference
 
 | Method | Endpoint | Tier | Returns |
@@ -164,6 +186,10 @@ env["meta"]["date"], env["meta"]["total"]   # day actually used, matches before 
 | `c.batch(symbols, exchange="nse", from_=None, to=None)` | `GET /v1/batch` | pro | `dict[str, list[OHLCV]]` |
 | `c.resolve(q, exchange="both", limit=5)` | `GET /v1/resolve` | pro | `list[ResolveHit]` |
 | `c.screener(exchange="nse", date=None, universe=None, filters=None, sort=None, order=None, limit=50, offset=0)` | `GET /v1/screener` | pro | `list[ScreenerRow]` |
+| `c.fo_chain(symbol, date=None, expiry=None)` | `GET /v1/fo/chain/{symbol}` | retail | `list[FORow]` |
+| `c.fo_expiries(symbol, date=None)` | `GET /v1/fo/expiries/{symbol}` | retail | `list[FOExpiry]` |
+| `c.fo_futures(symbol, from_=None, to=None)` | `GET /v1/fo/futures/{symbol}` | retail | `list[FORow]` |
+| `c.fo_contract(symbol, expiry, strike=None, option_type=None, from_=None, to=None)` | `GET /v1/fo/contract/{symbol}` | retail | `list[FORow]` |
 | `c.screener_envelope(...)` | same, with `meta["total"]` and `meta["date"]` | pro | `Envelope` |
 | `c.health()`, `c.ready()` | `GET /health`, `GET /ready` | keyless | `dict` |
 
@@ -219,7 +245,9 @@ except ProRequiredError as e:
 
 - **NSE bhavcopy + corp actions**: 2010-01-04 to today, ~4,100 trading days, ~7M rows
 - **BSE bhavcopy + corp actions**: 2024-07-08 to today (the SEBI CMTS cutover), ~530 days, ~1.2M rows
-- **Cron refresh**: weekdays 20:00 IST
+- **NSE delivery %**: 2010 to today (free key)
+- **NSE F&O end of day**: 2010 to today, futures and options (Retail and Pro)
+- **Cron refresh**: weekdays 18:30 IST, 21:30 IST retry
 
 Keyless endpoints are served at the Cloudflare edge from pre-rendered JSON, so most requests return in well under a second and repeat requests are cache hits. Keyless access is rate limited to 100 requests per 10 seconds per IP at the edge and 120 per minute at origin; the SDK retries 429s with backoff. Keyed requests bypass the edge cache and carry `X-RateLimit-Limit-Day` and `X-RateLimit-Remaining-Day` headers: 1,000 a day and 300 a minute on a free key.
 
