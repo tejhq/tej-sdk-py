@@ -105,7 +105,7 @@ c = Client(api_key="tej_live_...")
 adj = c.adjusted("RELIANCE", "nse", "2024-10-01", "2024-11-30")
 print(adj[-1]["adj_close"], adj[-1]["adj_factor_cumulative"])
 
-# Delivery quantity and % (NSE, since 2010)
+# Delivery quantity and % (NSE since 2010-01-04, BSE since 2024-07-08)
 d = c.delivery("RELIANCE", "nse", "2026-10-01", "2026-10-30")
 print(d[-1]["delivery_pct"])
 
@@ -245,7 +245,8 @@ except ProRequiredError as e:
 
 - **NSE bhavcopy + corp actions**: 2010-01-04 to today, ~4,100 trading days, ~7M rows
 - **BSE bhavcopy + corp actions**: 2024-07-08 to today (the SEBI CMTS cutover), ~530 days, ~1.2M rows
-- **NSE delivery %**: 2010 to today (free key)
+- **NSE delivery %**: 2010-01-04 to today, from the security-wise delivery position (MTO) file (free key)
+- **BSE delivery %**: 2024-07-08 to today, from the gross deliverables file (SCBSEALL) (free key)
 - **NSE F&O end of day**: 2010 to today, futures and options (Retail and Pro)
 - **Cron refresh**: weekdays 18:30 IST, 21:30 IST retry
 
