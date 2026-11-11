@@ -44,12 +44,14 @@ from .models import (
     Exchange,
     FOExpiry,
     FORow,
+    FOStatsRow,
     MetricsRow,
     ResolveHit,
     ScreenerRow,
     SnapshotRow,
     SymbolInterval,
     UniverseMember,
+    UnusualRow,
 )
 
 __all__ = [
@@ -65,6 +67,7 @@ __all__ = [
     "Exchange",
     "FOExpiry",
     "FORow",
+    "FOStatsRow",
     "MetricsRow",
     "NetworkError",
     "NotFoundError",
@@ -78,4 +81,5 @@ __all__ = [
     "SymbolInterval",
     "TejError",
     "UniverseMember",
+    "UnusualRow",
 ]

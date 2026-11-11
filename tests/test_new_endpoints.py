@@ -334,3 +334,72 @@ def test_fo_async(server):
 
     chain, contract = asyncio.run(main())
     assert chain[0]["lot_size"] == 65 and contract[0]["option_type"] == "CE"
+
+
+def test_fo_stats(server):
+    row = {
+        "date": "2026-11-09",
+        "kind": "index",
+        "expiry": "2026-11-24",
+        "is_nearest": True,
+        "pcr_oi": 1.1,
+    }
+    server.route("/v1/fo/stats/NIFTY", lambda p, q: (200, {"data": [row], "meta": {}}))
+    c = Client(base_url=server.base_url, max_retries=0)
+    assert c.fo_stats("nifty", "2026-11-01", expiry="2026-11-24")[0]["pcr_oi"] == 1.1
+    assert server.requests[-1][2] == {"from": ["2026-11-01"], "expiry": ["2026-11-24"]}
+    c.fo_stats("NIFTY")
+    assert server.requests[-1][2] == {}
+
+
+def _unusual_row(**kw):
+    row = {
+        "date": "2026-11-09",
+        "symbol": "DIVISLAB",
+        "isin": "INE361B01024",
+        "signal": "move",
+        "value": 0.12,
+        "normal": 0.016,
+        "z": 7.45,
+    }
+    row.update(kw)
+    return row
+
+
+def test_unusual_day_and_history(server):
+    day = {"data": [_unusual_row()], "meta": {"exchange": "nse", "date": "2026-11-09", "count": 1}}
+    server.route("/v1/unusual/nse", lambda p, q: (200, day))
+    server.route(
+        "/v1/unusual/nse/DIVISLAB", lambda p, q: (200, {"data": [_unusual_row()], "meta": {}})
+    )
+    c = Client(base_url=server.base_url, max_retries=0)
+    assert c.unusual()[0]["symbol"] == "DIVISLAB"
+    assert server.requests[-1][2] == {}
+    env = c.unusual_envelope("2026-11-09", signal="FUT_OI")
+    assert env["meta"]["date"] == "2026-11-09"
+    assert server.requests[-1][2] == {"date": ["2026-11-09"], "signal": ["fut_oi"]}
+    assert c.unusual_history("divislab", "2015-01-01", signal="move")[0]["z"] == 7.45
+    assert server.requests[-1][2] == {"from": ["2015-01-01"], "signal": ["move"]}
+
+
+def test_unusual_validation():
+    c = Client(base_url="http://127.0.0.1:9", max_retries=0)
+    with pytest.raises(ValueError):
+        c.unusual(signal="momentum")
+    with pytest.raises(ValueError):
+        c.unusual(exchange="bse")
+
+
+def test_async_unusual_and_fo_stats(server):
+    server.route(
+        "/v1/unusual/nse",
+        lambda p, q: (200, {"data": [_unusual_row()], "meta": {"date": "2026-11-09"}}),
+    )
+    server.route("/v1/fo/stats/NIFTY", lambda p, q: (200, {"data": [{"pcr_oi": 0.9}], "meta": {}}))
+
+    async def main():
+        async with AsyncClient(base_url=server.base_url, max_retries=0) as c:
+            return await c.unusual(signal="move"), await c.fo_stats("NIFTY")
+
+    u, s = asyncio.run(main())
+    assert u[0]["signal"] == "move" and s[0]["pcr_oi"] == 0.9

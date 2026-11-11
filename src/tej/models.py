@@ -111,6 +111,59 @@ class FOExpiry(TypedDict):
     strikes: int
 
 
+class FOStatsRow(TypedDict):
+    """Daily F&O figures for one symbol and expiry, computed by TejHQ.
+
+    Option fields are None for an expiry with only futures, and futures
+    fields are None for a weekly expiry with only options. ``buildup`` is
+    one of long_buildup, short_buildup, short_covering, long_unwinding.
+    """
+
+    date: str
+    kind: str
+    expiry: str
+    is_nearest: bool
+    ce_oi: int | None
+    pe_oi: int | None
+    ce_oi_change: int | None
+    pe_oi_change: int | None
+    ce_contracts: int | None
+    pe_contracts: int | None
+    pcr_oi: float | None
+    pcr_volume: float | None
+    max_pain: float | None
+    strikes: int | None
+    fut_settle: float | None
+    fut_settle_change: float | None
+    fut_oi: int | None
+    fut_oi_change: int | None
+    fut_contracts: int | None
+    buildup: str | None
+    underlying: float | None
+    basis: float | None
+    rollover_pct: float | None
+
+
+class UnusualRow(TypedDict):
+    """One stock doing something far outside its own recent normal on a day.
+
+    ``value`` is what happened, ``normal`` what is usual for the stock and
+    ``z`` the distance in standard deviations.
+    """
+
+    date: str
+    symbol: str
+    isin: str | None
+    signal: str
+    value: float | None
+    normal: float | None
+    z: float | None
+    close: float | None
+    ret_1d: float | None
+    volume_ratio: float | None
+    turnover: float | None
+
+
 class SymbolInterval(TypedDict):
     isin: str
     symbol: str

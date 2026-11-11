@@ -22,12 +22,14 @@ from .models import (
     Envelope,
     FOExpiry,
     FORow,
+    FOStatsRow,
     MetricsRow,
     ResolveHit,
     ScreenerRow,
     SnapshotRow,
     SymbolInterval,
     UniverseMember,
+    UnusualRow,
 )
 
 
@@ -434,6 +436,63 @@ class Client:
         )
         return _http.envelope_data(body)  # type: ignore[return-value]
 
+    def fo_stats(
+        self,
+        symbol: str,
+        from_: str | None = None,
+        to: str | None = None,
+        expiry: str | None = None,
+    ) -> list[FOStatsRow]:
+        """Daily F&O stats per expiry: PCR, max pain, buildup, basis, rollover. Retail or Pro.
+
+        Same range semantics as :meth:`ohlcv`. Pass ``expiry`` for one expiry.
+        """
+        sym = _http.normalize_symbol(symbol)
+        body = self._get(f"/v1/fo/stats/{sym}", _fo_stats_query(from_, to, expiry))
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    # ---- unusual activity (Retail and Pro) ---------------------------
+
+    def unusual(
+        self,
+        date: str | None = None,
+        signal: str | None = None,
+        exchange: str = "nse",
+    ) -> list[UnusualRow]:
+        """Stocks far outside their own normal on one day, strongest first. Retail or Pro.
+
+        ``date`` defaults to the latest day. ``signal`` is one of volume, move,
+        gap, delivery, fut_oi, high_52w, low_52w. Use :meth:`unusual_envelope`
+        for the resolved date.
+        """
+        env = self.unusual_envelope(date, signal, exchange)
+        return env.get("data", [])  # type: ignore[return-value]
+
+    def unusual_envelope(
+        self,
+        date: str | None = None,
+        signal: str | None = None,
+        exchange: str = "nse",
+    ) -> Envelope:
+        """:meth:`unusual` with ``meta``: ``date``, ``count``."""
+        ex = _unusual_exchange(exchange)
+        body = self._get(f"/v1/unusual/{ex}", _unusual_day_query(date, signal))
+        return cast(Envelope, body) if isinstance(body, dict) else Envelope(data=[])
+
+    def unusual_history(
+        self,
+        symbol: str,
+        from_: str | None = None,
+        to: str | None = None,
+        signal: str | None = None,
+        exchange: str = "nse",
+    ) -> list[UnusualRow]:
+        """One stock's unusual days over a range, back to 2010. Retail or Pro."""
+        ex = _unusual_exchange(exchange)
+        sym = _http.normalize_symbol(symbol)
+        body = self._get(f"/v1/unusual/{ex}/{sym}", _unusual_range_query(from_, to, signal))
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
     # ---- envelope variants (with meta) ---------------------------------
 
     def ohlcv_envelope(
@@ -493,6 +552,45 @@ def _fo_day_query(date: str | None, expiry: str | None) -> dict[str, str] | None
     if expiry is not None:
         q["expiry"] = _http.validate_date(expiry, "expiry")
     return q or None
+
+
+def _fo_stats_query(from_: str | None, to: str | None, expiry: str | None) -> dict[str, str] | None:
+    q = _range_query(from_, to) or {}
+    if expiry is not None:
+        q["expiry"] = _http.validate_date(expiry, "expiry")
+    return q or None
+
+
+UNUSUAL_SIGNALS = frozenset({"volume", "move", "gap", "delivery", "fut_oi", "high_52w", "low_52w"})
+
+
+def _unusual_exchange(exchange: str) -> str:
+    ex = exchange.strip().lower()
+    if ex != "nse":
+        raise ValueError("unusual activity is NSE only")
+    return ex
+
+
+def _unusual_signal(signal: str | None, q: dict[str, str]) -> dict[str, str] | None:
+    if signal is not None:
+        s = signal.strip().lower()
+        if s not in UNUSUAL_SIGNALS:
+            raise ValueError(f"signal must be one of {', '.join(sorted(UNUSUAL_SIGNALS))}")
+        q["signal"] = s
+    return q or None
+
+
+def _unusual_day_query(date: str | None, signal: str | None) -> dict[str, str] | None:
+    q: dict[str, str] = {}
+    if date is not None:
+        q["date"] = _http.validate_date(date, "date")
+    return _unusual_signal(signal, q)
+
+
+def _unusual_range_query(
+    from_: str | None, to: str | None, signal: str | None
+) -> dict[str, str] | None:
+    return _unusual_signal(signal, _range_query(from_, to) or {})
 
 
 def _fo_contract_query(
