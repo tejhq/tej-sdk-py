@@ -158,7 +158,7 @@ c = Client(api_key="tej_live_...")   # Retail or Pro
 # Option chain: latest day and nearest expiry by default
 env = c.fo_chain_envelope("NIFTY")
 env["meta"]["date"], env["meta"]["expiry"], env["meta"]["underlying"]
-chain = env["data"]   # strike, option_type, close, settle_price, open_interest, oi_change, ...
+chain = env["data"]   # strike, option_type, close, settle_price, open_interest, oi_change, iv, delta, gamma, theta, vega, ...
 
 # Any past day and expiry
 c.fo_chain("BANKNIFTY", date="2020-03-23", expiry="2020-03-26")
@@ -169,9 +169,12 @@ c.fo_futures("RELIANCE", "2026-01-01")
 c.fo_contract("NIFTY", "2026-11-24", strike=23000, option_type="CE", from_="2026-10-01")
 c.fo_contract("NIFTY", "2026-11-24")   # without strike: the future
 
-# Daily stats per expiry: pcr_oi, pcr_volume, max_pain, buildup, basis, rollover_pct
+# Daily stats per expiry: pcr_oi, pcr_volume, max_pain, buildup, basis, rollover_pct, atm_iv, iv_skew
 c.fo_stats("NIFTY", "2026-11-01")
 c.fo_stats("RELIANCE", "2026-01-01", expiry="2026-11-24")
+
+# IV history: nearest monthly expiry's ATM IV per day since 2010
+rows = c.fo_stats("NIFTY", "2010-01-01")
 ```
 
 ## Unusual activity (Retail and Pro)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0
+
+- `FORow` gains `iv`, `delta`, `gamma`, `theta`, `vega` (options that traded that day), returned by `fo_chain()` and `fo_contract()`.
+- `FOStatsRow` gains `atm_iv` and `iv_skew`.
+
 ## 0.6.0
 
 - `fo_stats()`: daily F&O figures per expiry (put-call ratio by OI and volume, max pain, futures buildup, basis, rollover %) since 2010. Retail and Pro.
