@@ -83,7 +83,10 @@ class DeliveryRow(TypedDict):
 
 class FORow(TypedDict):
     """One F&O contract on one day. ``strike``/``option_type`` are None for
-    futures; ``underlying``/``lot_size`` are None before 2024-07-08."""
+    futures; ``underlying``/``lot_size`` are None before 2024-07-08.
+    ``iv`` and the Greeks are set on options that traded that day: Black-76
+    on the same-expiry forward, delta and gamma against the forward, theta
+    per calendar day, vega per volatility point."""
 
     date: str
     instrument: str
@@ -101,6 +104,11 @@ class FORow(TypedDict):
     oi_change: int
     underlying: float | None
     lot_size: int | None
+    iv: float | None
+    delta: float | None
+    gamma: float | None
+    theta: float | None
+    vega: float | None
 
 
 class FOExpiry(TypedDict):
@@ -142,6 +150,8 @@ class FOStatsRow(TypedDict):
     underlying: float | None
     basis: float | None
     rollover_pct: float | None
+    atm_iv: float | None
+    iv_skew: float | None
 
 
 class UnusualRow(TypedDict):
