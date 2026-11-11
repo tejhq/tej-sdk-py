@@ -168,6 +168,24 @@ c.fo_expiries("NIFTY", "2026-10-30")
 c.fo_futures("RELIANCE", "2026-01-01")
 c.fo_contract("NIFTY", "2026-11-24", strike=23000, option_type="CE", from_="2026-10-01")
 c.fo_contract("NIFTY", "2026-11-24")   # without strike: the future
+
+# Daily stats per expiry: pcr_oi, pcr_volume, max_pain, buildup, basis, rollover_pct
+c.fo_stats("NIFTY", "2026-11-01")
+c.fo_stats("RELIANCE", "2026-01-01", expiry="2026-11-24")
+```
+
+## Unusual activity (Retail and Pro)
+
+NSE stocks far outside their own previous 60 sessions on a day: volume, move, gap, delivery, fut_oi, high_52w, low_52w. Facts about the day, not forecasts.
+
+```python
+env = c.unusual_envelope()            # latest day, strongest first
+env["meta"]["date"], env["meta"]["count"]
+for r in env["data"][:10]:
+    print(r["symbol"], r["signal"], r["value"], r["normal"], r["z"])
+
+c.unusual("2026-11-09", signal="fut_oi")
+c.unusual_history("DIVISLAB", "2015-01-01")   # one stock's unusual days
 ```
 
 ## API reference
@@ -190,6 +208,10 @@ c.fo_contract("NIFTY", "2026-11-24")   # without strike: the future
 | `c.fo_expiries(symbol, date=None)` | `GET /v1/fo/expiries/{symbol}` | retail | `list[FOExpiry]` |
 | `c.fo_futures(symbol, from_=None, to=None)` | `GET /v1/fo/futures/{symbol}` | retail | `list[FORow]` |
 | `c.fo_contract(symbol, expiry, strike=None, option_type=None, from_=None, to=None)` | `GET /v1/fo/contract/{symbol}` | retail | `list[FORow]` |
+| `c.fo_stats(symbol, from_=None, to=None, expiry=None)` | `GET /v1/fo/stats/{symbol}` | retail | `list[FOStatsRow]` |
+| `c.unusual(date=None, signal=None, exchange="nse")` | `GET /v1/unusual/{exchange}` | retail | `list[UnusualRow]` |
+| `c.unusual_envelope(date=None, signal=None, exchange="nse")` | same, with `meta["date"]` and `meta["count"]` | retail | `Envelope` |
+| `c.unusual_history(symbol, from_=None, to=None, signal=None, exchange="nse")` | `GET /v1/unusual/{exchange}/{symbol}` | retail | `list[UnusualRow]` |
 | `c.screener_envelope(...)` | same, with `meta["total"]` and `meta["date"]` | pro | `Envelope` |
 | `c.health()`, `c.ready()` | `GET /health`, `GET /ready` | keyless | `dict` |
 

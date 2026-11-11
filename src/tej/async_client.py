@@ -27,7 +27,15 @@ from types import TracebackType
 from typing import Any, cast
 
 from . import _http
-from .client import _fo_contract_query, _fo_day_query, _screener_query
+from .client import (
+    _fo_contract_query,
+    _fo_day_query,
+    _fo_stats_query,
+    _screener_query,
+    _unusual_day_query,
+    _unusual_exchange,
+    _unusual_range_query,
+)
 from .models import (
     OHLCV,
     Action,
@@ -36,12 +44,14 @@ from .models import (
     Envelope,
     FOExpiry,
     FORow,
+    FOStatsRow,
     MetricsRow,
     ResolveHit,
     ScreenerRow,
     SnapshotRow,
     SymbolInterval,
     UniverseMember,
+    UnusualRow,
 )
 
 
@@ -415,6 +425,63 @@ class AsyncClient:
         body = await self._get(
             f"/v1/fo/contract/{sym}", _fo_contract_query(expiry, strike, option_type, from_, to)
         )
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    async def fo_stats(
+        self,
+        symbol: str,
+        from_: str | None = None,
+        to: str | None = None,
+        expiry: str | None = None,
+    ) -> list[FOStatsRow]:
+        """Daily F&O stats per expiry: PCR, max pain, buildup, basis, rollover. Retail or Pro.
+
+        Same range semantics as :meth:`ohlcv`. Pass ``expiry`` for one expiry.
+        """
+        sym = _http.normalize_symbol(symbol)
+        body = await self._get(f"/v1/fo/stats/{sym}", _fo_stats_query(from_, to, expiry))
+        return _http.envelope_data(body)  # type: ignore[return-value]
+
+    # ---- unusual activity (Retail and Pro) ---------------------------
+
+    async def unusual(
+        self,
+        date: str | None = None,
+        signal: str | None = None,
+        exchange: str = "nse",
+    ) -> list[UnusualRow]:
+        """Stocks far outside their own normal on one day, strongest first. Retail or Pro.
+
+        ``date`` defaults to the latest day. ``signal`` is one of volume, move,
+        gap, delivery, fut_oi, high_52w, low_52w. Use :meth:`unusual_envelope`
+        for the resolved date.
+        """
+        env = await self.unusual_envelope(date, signal, exchange)
+        return env.get("data", [])  # type: ignore[return-value]
+
+    async def unusual_envelope(
+        self,
+        date: str | None = None,
+        signal: str | None = None,
+        exchange: str = "nse",
+    ) -> Envelope:
+        """:meth:`unusual` with ``meta``: ``date``, ``count``."""
+        ex = _unusual_exchange(exchange)
+        body = await self._get(f"/v1/unusual/{ex}", _unusual_day_query(date, signal))
+        return cast(Envelope, body) if isinstance(body, dict) else Envelope(data=[])
+
+    async def unusual_history(
+        self,
+        symbol: str,
+        from_: str | None = None,
+        to: str | None = None,
+        signal: str | None = None,
+        exchange: str = "nse",
+    ) -> list[UnusualRow]:
+        """One stock's unusual days over a range, back to 2010. Retail or Pro."""
+        ex = _unusual_exchange(exchange)
+        sym = _http.normalize_symbol(symbol)
+        body = await self._get(f"/v1/unusual/{ex}/{sym}", _unusual_range_query(from_, to, signal))
         return _http.envelope_data(body)  # type: ignore[return-value]
 
     async def ohlcv_envelope(
