@@ -275,7 +275,7 @@ except ProRequiredError as e:
 - **NSE F&O end of day**: 2010 to today, futures and options (Retail and Pro)
 - **Cron refresh**: weekdays 18:30 IST, 21:30 IST retry
 
-Keyless endpoints are served at the Cloudflare edge from pre-rendered JSON, so most requests return in well under a second and repeat requests are cache hits. Keyless access is rate limited to 100 requests per 10 seconds per IP at the edge and 120 per minute at origin; the SDK retries 429s with backoff. Keyed requests bypass the edge cache and carry `X-RateLimit-Limit-Day` and `X-RateLimit-Remaining-Day` headers: 1,000 a day and 300 a minute on a free key.
+Keyless endpoints are served at the Cloudflare edge from pre-rendered JSON, so most requests return in well under a second and repeat requests are cache hits. OHLCV, snapshot, actions and status are limited to 5 requests per 10 seconds per IP, with or without a key. Without a key, the first three also share 500 calls a day per IP; the SDK retries 429s with backoff. Keyed requests bypass the edge cache and carry `X-RateLimit-Limit-Day` and `X-RateLimit-Remaining-Day` headers: 1,000 a day and 300 a minute on a free key.
 
 ## License
 
